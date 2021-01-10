@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<title>ダイレクトぷっしゅ</title>
+<style>
+input[type=text], select {
+  font-size: 16px;
+}
+#divtoken {
+  word-break: break-all;
+}
+</style>
+<script type="module">
+import { push } from "./push.js";
+
+window.onload = async () => {
+  const hash = document.location.hash;
+  if (hash.length < 1) {
+    alert("deviceTokenを設定してください");
+    return;
+  }
+  const deviceToken = hash.substring(1);
+  divtoken.textContent = deviceToken;
+  aforsafe.href += hash;
+  //
+
+  send1.onclick = () => {
+    push2(inmes.value);
+  };
+  send2.onclick = () => {
+    push2(selmes.value);
+  };
+  const push2 = async (mes) => {
+    push(deviceToken, "ぷっしゅ", mes);
+  };
+};
+</script>
+</head>
+<body>
+
+<h1>ダイレクトぷっしゅ</h1>
+<input type="text" id="inmes" placeholder="メッセージ">
+<button id="send1">送信</button>
+<hr>
+<select id="selmes">
+<option>帰っておいでー</option>
+<option>いまから帰るよ</option>
+</select>
+<button id="send2">送信</button>
+<hr>
+<a href=forsafe.html id=aforsafe>雪かき安全アプリ</a><br>
+<hr>
+<div id="divtoken"></div>
+<hr>
+App: <a href=https://fukuno.jig.jp/3091>福野泰介の一日一創</a><br>
+
+</body>
+</html>

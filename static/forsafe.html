@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width">
+<meta charset="utf-8">
+<title>安全ぷっしゅ</title>
+<style>
+input[type=text] {
+  font-size: 16px;
+}
+#divtoken {
+  word-break: break-all;
+}
+</style>
+<script type="module">
+
+import { push } from "./push.js";
+
+window.onload = async () => {
+  const hash = document.location.hash;
+  if (hash.length < 1) {
+    alert("deviceTokenを設定してください");
+    return;
+  }
+  const deviceToken = hash.substring(1);
+  divtoken.textContent = deviceToken;
+  aindex.href += hash;
+
+  const push2 = async () => {
+    await push(deviceToken, "安全ぷっしゅ", "指定時間加速度センサーの動きがありませんでした");
+    setTimeout(push2, 30 * 1000); // 30秒ごとに連続送信
+  };
+  let twait = null;
+  const waitStable = () => {
+    if (twait) {
+      clearTimeout(twait);
+    }
+    twait = setTimeout(push2, parseInt(tht.value) * 60 * 1000);
+  };
+  tht.onchange = () => {
+    const t = parseInt(tht.value);
+    if (t < 1 || isNaN(t)) {
+      tht.value = 1;
+    }
+    waitStable();
+    console.log(tht.value);
+  };
+
+  document.body.onclick = async () => {
+    if (!DeviceMotionEvent || typeof DeviceMotionEvent.requestPermission !== "function") {
+      return;
+    }
+    const state = await DeviceMotionEvent.requestPermission();
+    if (state != "granted") {
+      return;
+    }
+    notice.textContent = "";
+
+    let maxg = 0;
+    const ming = 1.1;
+    let pushdt = 0;
+    window.addEventListener("devicemotion", async (e) => {
+      const G = 9.80665;
+      const xg = e.accelerationIncludingGravity.x; // 傾き
+      const yg = e.accelerationIncludingGravity.y;
+      const zg = e.accelerationIncludingGravity.z;
+      const g = Math.sqrt(xg * xg + yg * yg + zg * zg) / G;
+      if (g > ming) {
+        waitStable();
+      }
+      if (g > maxg) {
+        maxg = g;
+        divmaxg.textContent = maxg;
+      }
+      divg.textContent = g.toFixed(2) + "G (" + maxg.toFixed(2) + "G)";
+      if (g > parseFloat(thg.value)) { // しきい値を超えたら振る
+        const dt = new Date().getTime();
+        if (dt - pushdt > 3000) {
+          console.log(g);
+          await push(deviceToken, "安全ぷっしゅ", g + "G 加速度センサーの値が閾値を超えました");
+          pushdt = dt;
+        }
+      }
+    }, true);
+  };
+};
+</script>
+</head>
+<body>
+
+<h1>安全ぷっしゅ</h1>
+
+<div id="notice">まず画面をタップして加速度センサーを有効にしてください</div>
+
+加速度: <div id="divg"></div>
+最大値: <div id="divmaxg"></div>
+しきい値: <input type="text" id=thg value="3" size=3>G<br>
+指定時間: <input type="text" id=tht value="5" size=3>分<br>
+<hr>
+次の条件で自動的に通知されます<br>
+- しきい値を超える加速度を検出<br>
+- 指定時間動きが無い<br>
+（この画面を閉じると通知されません）
+<hr>
+<a href=index.html id=aindex>ダイレクトぷっしゅ</a><br>
+<hr>
+<div id="divtoken"></div>
+<hr>
+App: <a href=https://fukuno.jig.jp/3091>福野泰介の一日一創</a><br>
+</body>
+</html>
