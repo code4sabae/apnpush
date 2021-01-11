@@ -15,19 +15,49 @@ input[type=text] {
 
 import { push } from "./push.js";
 
+const FREQ = 800;
+
 window.onload = async () => {
+  btnbeeptest.onclick = () => {
+    notice("テスト通知");
+    //push2();
+  };
+  let ttiming = null;
+  btntiming.onclick = () => {
+    if (ttiming) {
+      clearInterval(ttiming);
+      ttiming = null;
+      return;
+    }
+    beep(440, 100);
+    ttiming = setInterval(() => {
+      beep(440, 100);
+    }, 10 * 1000);
+  };
   const hash = document.location.hash;
+  /*
   if (hash.length < 1) {
-    alert("deviceTokenを設定してください");
+    alert("PUSHGETのdeviceTokenを設定してください");
     return;
   }
-  const deviceToken = hash.substring(1);
+  */
+  const deviceToken = hash.length < 1 ? null : hash.substring(1);
   divtoken.textContent = deviceToken;
   aindex.href += hash;
 
+  const notice = (body) => {
+    if (deviceToken) {
+      push(deviceToken, "安全ぷっしゅ", body);
+    }
+    beep(FREQ, 500);
+  };
+
   const push2 = async () => {
-    await push(deviceToken, "安全ぷっしゅ", "指定時間加速度センサーの動きがありませんでした");
+    notice("指定時間加速度センサーの動きがありませんでした");
     setTimeout(push2, 30 * 1000); // 30秒ごとに連続送信
+    setInterval(() => {
+      beep(FREQ, 500);
+    }, 1000);
   };
   let twait = null;
   const waitStable = () => {
@@ -45,10 +75,15 @@ window.onload = async () => {
     console.log(tht.value);
   };
 
-  document.body.onclick = async () => {
+  btnstart.onclick = () => {
+    startMonitering();
+    startSound();
+  };
+  const startMonitering = async () => {
     if (!DeviceMotionEvent || typeof DeviceMotionEvent.requestPermission !== "function") {
       return;
     }
+
     const state = await DeviceMotionEvent.requestPermission();
     if (state != "granted") {
       return;
@@ -69,42 +104,115 @@ window.onload = async () => {
       }
       if (g > maxg) {
         maxg = g;
-        divmaxg.textContent = maxg;
+        divmaxg.textContent = maxg.toFixed(2);
       }
       divg.textContent = g.toFixed(2) + "G (" + maxg.toFixed(2) + "G)";
-      if (g > parseFloat(thg.value)) { // しきい値を超えたら振る
+      if (g > parseFloat(thg.value)) { // しきい値を超えたら
         const dt = new Date().getTime();
         if (dt - pushdt > 3000) {
           console.log(g);
-          await push(deviceToken, "安全ぷっしゅ", g + "G 加速度センサーの値が閾値を超えました");
+          notice(g.toFixed(2) + "G 加速度センサーの値が閾値を超えました");
           pushdt = dt;
         }
       }
     }, true);
   };
 };
+
+// sound
+
+let audioctx = null;
+let freq = 0;
+
+const startSound = () => {
+  if (audioctx) {
+    return;
+  }
+	let buflen = 2048;
+	try {
+    const AudioContext = window.webkitAudioContext || window.AudioContext;
+    const audio = new AudioContext();
+		if (!audio)
+			return null;
+		const sampleRate = audio.sampleRate;
+		//console.log("sampleRate", sampleRate);
+		if (sampleRate > 48000) {
+			buflen *= (sampleRate / 48000) >> 0;
+		}
+		const nch = 2;
+		const node = audio.createScriptProcessor(buflen, 0, nch);
+		const gain = audio.createGain();
+	
+		const src = audio.createBufferSource();
+		src.buffer = audio.createBuffer(nch, buflen, audio.sampleRate);
+		src.connect(node);
+		node.connect(gain);
+		gain.connect(audio.destination);
+
+    let cnt = 0;
+		node.onaudioprocess = (data) => {
+      let period = freq / sampleRate;
+			const outl = data.outputBuffer.getChannelData(0);
+			const outr = data.outputBuffer.getChannelData(1);
+			const len = data.outputBuffer.length;
+			for (let i = 0; i < len; i++) {
+        const out = freq == 0 ? 0.5 : (cnt > .5 ? 1 : 0);
+				outl[i] = outr[i] = out;
+				cnt += period;
+				if (cnt >= 1.0) {
+					cnt -= 1.0;
+        }
+			}
+		};
+		gain.gain.value = 1.;
+    audioctx = audio;
+		return audio;
+	} catch (e) {
+		console.log(e);
+	}
+	return null;
+};
+const stopSound = () => {
+  if (audioctx) {
+		// audioctx.stop();
+		audioctx.close();
+		audioctx = null;
+  }
+};
+
+const beep = async (freqhz, msec) => {
+  startSound();
+  freq = freqhz;
+  setTimeout(() => {
+    freq = 0;
+  }, msec);
+};
+
 </script>
 </head>
 <body>
 
 <h1>安全ぷっしゅ</h1>
 
-<div id="notice">まず画面をタップして加速度センサーを有効にしてください</div>
-
-加速度: <div id="divg"></div>
-最大値: <div id="divmaxg"></div>
-しきい値: <input type="text" id=thg value="3" size=3>G<br>
-指定時間: <input type="text" id=tht value="5" size=3>分<br>
+<button id="btnstart">雪かきスタート</button><br>
+<br>
+加速度: <span id="divg"></span><br>
+最大値: <span id="divmaxg"></span><br>
+しきい値: <input type="text" id=thg value="3" size="3">G<br>
+指定時間: <input type="text" id=tht value="5" size="3">分<br>
 <hr>
 次の条件で自動的に通知されます<br>
 - しきい値を超える加速度を検出<br>
 - 指定時間動きが無い<br>
 （この画面を閉じると通知されません）
 <hr>
-<a href=index.html id=aindex>ダイレクトぷっしゅ</a><br>
+<button id="btnbeeptest">ビープ音テスト</button>
+<button id="btntiming">10秒間隔ビープ</button>
+<hr>
+<a href="index.html" id="aindex">ダイレクトぷっしゅ</a><br>
 <hr>
 <div id="divtoken"></div>
 <hr>
-App: <a href=https://fukuno.jig.jp/3091>福野泰介の一日一創</a><br>
+App: <a href="https://fukuno.jig.jp/3091">福野泰介の一日一創</a><br>
 </body>
 </html>

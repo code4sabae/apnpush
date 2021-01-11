@@ -11,7 +11,7 @@ class MyServer extends Server {
     return { res: "err" };
   }
 }
-new MyServer(8883);
+new MyServer(3002);
 
 /*
 http://localhost:8883/
