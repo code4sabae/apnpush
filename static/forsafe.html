@@ -23,17 +23,6 @@ window.onload = async () => {
     //push2();
   };
   let ttiming = null;
-  btntiming.onclick = () => {
-    if (ttiming) {
-      clearInterval(ttiming);
-      ttiming = null;
-      return;
-    }
-    beep(440, 100);
-    ttiming = setInterval(() => {
-      beep(440, 100);
-    }, 10 * 1000);
-  };
   const hash = document.location.hash;
   /*
   if (hash.length < 1) {
@@ -76,8 +65,22 @@ window.onload = async () => {
   };
 
   btnstart.onclick = () => {
+    if (ttiming) {
+      beep(300, 500);
+      clearInterval(ttiming);
+      ttiming = null;
+      btnstart.textContent = "雪かきスタート";
+      return;
+    }
+    btnstart.textContent = "雪かき一時停止";
+
     startMonitering();
     startSound();
+
+    beep(440, 100);
+    ttiming = setInterval(() => {
+      beep(440, 100);
+    }, 10 * 1000);
   };
   const startMonitering = async () => {
     if (!DeviceMotionEvent || typeof DeviceMotionEvent.requestPermission !== "function") {
@@ -106,7 +109,7 @@ window.onload = async () => {
         maxg = g;
         divmaxg.textContent = maxg.toFixed(2);
       }
-      divg.textContent = g.toFixed(2) + "G (" + maxg.toFixed(2) + "G)";
+      divg.textContent = g.toFixed(2) + "G"; //  (" + maxg.toFixed(2) + "G)";
       if (g > parseFloat(thg.value)) { // しきい値を超えたら
         const dt = new Date().getTime();
         if (dt - pushdt > 3000) {
@@ -196,8 +199,8 @@ const beep = async (freqhz, msec) => {
 
 <button id="btnstart">雪かきスタート</button><br>
 <br>
-加速度: <span id="divg"></span><br>
-最大値: <span id="divmaxg"></span><br>
+加速度: <span id="divg">-G</span><br>
+最大値: <span id="divmaxg">-G</span><br>
 しきい値: <input type="text" id=thg value="3" size="3">G<br>
 指定時間: <input type="text" id=tht value="5" size="3">分<br>
 <hr>
@@ -206,8 +209,7 @@ const beep = async (freqhz, msec) => {
 - 指定時間動きが無い<br>
 （この画面を閉じると通知されません）
 <hr>
-<button id="btnbeeptest">ビープ音テスト</button>
-<button id="btntiming">10秒間隔ビープ</button>
+<button id="btnbeeptest">通知とビープ音をテストする</button>
 <hr>
 <a href="index.html" id="aindex">ダイレクトぷっしゅ</a><br>
 <hr>
